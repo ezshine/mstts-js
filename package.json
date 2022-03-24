@@ -1,0 +1,26 @@
+{
+  "name": "mstts",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ezshine/mstts-js.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ezshine/mstts-js/issues"
+  },
+  "homepage": "https://github.com/ezshine/mstts-js#readme",
+  "dependencies": {
+    "axios": "^0.26.1",
+    "cheerio": "^1.0.0-rc.10",
+    "nodejs-websocket": "^1.7.2",
+    "uuid": "^8.3.2"
+  }
+}
