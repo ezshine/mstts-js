@@ -1,15 +1,38 @@
+#!/usr/bin/env node
+
+/*
+作者：大帅老猿
+微信：dashuailaoyuan
+github：https://github.com/ezshine
+
+使用方法
+
+1. 命令行
+npm install -g mstts-js
+mstts -i 请在微信里搜索大帅老猿 -o ./test.mp3
+
+2. require
+npm install mstts-js
+const mstts = require('mstts-js')
+
+const mp3buffer = await mstts.getTTSData(text,voice,express,role,rate,pitch);
+*/
+
 const axios = require("axios");
 const cheerio = require("cheerio");
 const { v4: uuidv4 } = require('uuid');
 const ws = require("nodejs-websocket");
 const fs = require("fs");
+const inquirer = require('inquirer');
+
+const argv = require('minimist')(process.argv.slice(2));
 
 async function getAuthToken(){
     //https://azure.microsoft.com/en-gb/services/cognitive-services/text-to-speech/
 
     const res = await axios.get("https://azure.microsoft.com/en-gb/services/cognitive-services/text-to-speech/");
 
-    const reg = RegExp('token: \"(.*?)\"');
+    const reg = /token: \"(.*?)\"/;
 
     if(reg.test(res.data)){
         const token = RegExp.$1;
@@ -49,75 +72,75 @@ async function getTTSData(text,voice='CN-Yunxi',express='general',role='',rate=0
     </speak>
     `
 
-    const auth_token = await getAuthToken();
-    const req_id = uuidv4().toUpperCase();
+    const Authorization = await getAuthToken();
+    const XConnectionId = uuidv4().toUpperCase();
 
-    const connect = await wssConnect(`wss://eastus.tts.speech.microsoft.com/cognitiveservices/websocket/v1?Authorization=${auth_token}&X-ConnectionId=${req_id}`);
+    const connect = await wssConnect(`wss://eastus.tts.speech.microsoft.com/cognitiveservices/websocket/v1?Authorization=${Authorization}&X-ConnectionId=${XConnectionId}`);
 
-    const payload_1 = '{"context":{"system":{"name":"SpeechSDK","version":"1.12.1-rc.1","build":"JavaScript","lang":"JavaScript","os":{"platform":"Browser/Linux x86_64","name":"Mozilla/5.0 (X11; Linux x86_64; rv:78.0) Gecko/20100101 Firefox/78.0","version":"5.0 (X11)"}}}}'
-    const message_1 = 'Path : speech.config\r\nX-RequestId: ' + req_id + '\r\nX-Timestamp: ' + 
-            getXTime() + '\r\nContent-Type: application/json\r\n\r\n' + payload_1;
+    const message_1 = `Path: speech.config\r\nX-RequestId: ${XConnectionId}\r\nX-Timestamp: ${getXTime()}\r\nContent-Type: application/json\r\n\r\n{"context":{"system":{"name":"SpeechSDK","version":"1.19.0","build":"JavaScript","lang":"JavaScript","os":{"platform":"Browser/Linux x86_64","name":"Mozilla/5.0 (X11; Linux x86_64; rv:78.0) Gecko/20100101 Firefox/78.0","version":"5.0 (X11)"}}}}`;
     await wssSend(connect,message_1);
 
-    const payload_2 = '{"synthesis":{"audio":{"metadataOptions":{"sentenceBoundaryEnabled":false,"wordBoundaryEnabled":false},"outputFormat":"audio-16khz-32kbitrate-mono-mp3"}}}'
-    const message_2 = 'Path : synthesis.context\r\nX-RequestId: ' + req_id + '\r\nX-Timestamp: ' + 
-            getXTime() + '\r\nContent-Type: application/json\r\n\r\n' + payload_2;
-
+    const message_2 = `Path: synthesis.context\r\nX-RequestId: ${XConnectionId}\r\nX-Timestamp: ${getXTime()}\r\nContent-Type: application/json\r\n\r\n{"synthesis":{"audio":{"metadataOptions":{"sentenceBoundaryEnabled":false,"wordBoundaryEnabled":false},"outputFormat":"audio-16khz-32kbitrate-mono-mp3"}}}`;
     await wssSend(connect,message_2);
 
-    const message_3 = 'Path: ssml\r\nX-RequestId: ' + req_id + '\r\nX-Timestamp: ' + 
-            getXTime() + '\r\nContent-Type: application/ssml+xml\r\n\r\n' + SSML
+    const message_3 = `Path: ssml\r\nX-RequestId: ${XConnectionId}\r\nX-Timestamp: ${getXTime()}\r\nContent-Type: application/ssml+xml\r\n\r\n${SSML}`
     await wssSend(connect,message_3);
 
-    let final_data=Buffer.alloc(0);
-    connect.on("text", (data) => {
-        if(data.indexOf("Path:turn.end")>=0){
-            fs.writeFileSync("test.mp3",final_data);
-            connect.close();
-        }
+    return new Promise((resolve,reject)=>{
+        let final_data=Buffer.alloc(0);
+        connect.on("text", (data) => {
+            if(data.indexOf("Path:turn.end")>=0){
+                connect.close();
+                resolve(final_data);
+            }
+        })
+        connect.on("binary", function (response) {
+            let data = Buffer.alloc(0);
+            response.on("readable", function () {
+                const newData = response.read()
+                if (newData)data = Buffer.concat([data, newData], data.length+newData.length);
+            })
+            response.on("end", function () {
+                const index = data.toString().indexOf("Path:audio")+10;
+                final_data = Buffer.concat([final_data,data.slice(index)]);
+            })
+        });
+        connect.on("close", function (code, reason) {
+            
+        })
     })
-    connect.on("binary", function (response) {
-        let data = Buffer.alloc(0);
-		response.on("readable", function () {
-		    const newData = response.read()
-		    if (newData)data = Buffer.concat([data, newData], data.length+newData.length);
-		})
-		response.on("end", function () {
-            const index = data.toString().indexOf("Path:audio")+10;
-            final_data = Buffer.concat([final_data,data.slice(index)]);
-		})
-	});
-	connect.on("close", function (code, reason) {
-		
-	})
 }
 
 const voices = {
-    "CN":[
-        "Xiaoxiao",
-        "Xiaochen",
-        "Xiaohan",
-        "Xiaomo",
-        "Xiaoqiu",
-        "Xiaorui",
-        "Xiaoshuang",
-        "Xiaoxuan",
-        "Xiaoyan",
-        "Xiaoyou",
-        "Yunyang",
-        "Yunxi",
-        "Yunye"
-    ],
-    "TW":[
-        "Hsiaochen",
-        "Hsiaoyu",
-        "Yunjhe"
-    ],
-    "HK":[
-        "Hiumaan",
-        "Hiugaai",
-        "Wanlung"
-    ]
+    "CN":{
+        "晓晓":"Xiaoxiao",
+        "晓辰":"Xiaochen",
+        "晓涵":"Xiaohan",
+        "晓墨":"Xiaomo",
+        "晓秋":"Xiaoqiu",
+        "晓睿":"Xiaorui",
+        "晓双":"Xiaoshuang",
+        "晓萱":"Xiaoxuan",
+        "晓颜":"Xiaoyan",
+        "晓悠":"Xiaoyou",
+        "云扬":"Yunyang",
+        "云希":"Yunxi",
+        "云野":"Yunye",
+        "辽宁晓北":"LN-Xiaobei",
+        "四川云希":"SC-Yunxi",
+        "云皓":"Yunhao",
+        "云健":"Yunjian"
+    },
+    "TW":{
+        "曉臻":"HsiaoChen",
+        "曉雨":"HsiaoYu",
+        "雲哲":"YunJhe"
+    },
+    "HK":{
+        "曉曼":"HiuMaan",
+        "曉佳":"HiuGaai",
+        "雲龍":"WanLung"
+    }
 }
 
 const emotions=[
@@ -134,5 +157,46 @@ const emotions=[
     "embarrassed"
 ]
 
-getTTSData("猿创营的兄弟们早上好！","HK-"+voices["HK"][2],"sad");
+// getTTSData("我叫大帅，一个热爱编程的老程序猿","CN-"+voices["CN"][1],"cheerful");
 
+
+async function showMenu(){
+    let text = argv.i||'请在微信里搜索大帅老猿';
+
+    let langChoices = {
+        "中文普通话":"CN",
+        "中国台湾-国语":"TW",
+        "中国香港-粤语":"HK"
+    };
+    res = await inquirer.prompt([
+        {
+          name:"请选择语言",
+          type:"list",
+          choices:Object.keys(langChoices),
+          required:true,
+        }
+    ])
+    let lang = langChoices[res['请选择语言']];
+
+    res = await inquirer.prompt([
+        {
+          name:"请选择语音",
+          type:"list",
+          choices:Object.keys(voices[lang]),
+          required:true,
+        }
+    ])
+
+    let voice = voices[lang][res['请选择语音']];
+
+    const mp3buffer = await getTTSData(text,lang+"-"+voice);
+
+    let output = argv.o||"./"+lang+"-"+voice+"-"+(new Date().getTime())+".mp3"
+    fs.writeFileSync(output,mp3buffer);
+}
+
+exports.getTTSData = getTTSData;
+
+if(require.main === module) {
+    showMenu();
+}

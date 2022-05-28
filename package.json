@@ -1,8 +1,11 @@
 {
-  "name": "mstts",
-  "version": "1.0.0",
-  "description": "",
+  "name": "mstts-js",
+  "version": "0.9.1",
+  "description": "a library for get free mstts service",
   "main": "index.js",
+  "bin": {
+    "mstts":"index.js"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -10,9 +13,9 @@
     "type": "git",
     "url": "git+https://github.com/ezshine/mstts-js.git"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": ["文本转语音","TTS","TextToSpeech"],
+  "author": "大帅老猿",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/ezshine/mstts-js/issues"
   },
@@ -20,6 +23,8 @@
   "dependencies": {
     "axios": "^0.26.1",
     "cheerio": "^1.0.0-rc.10",
+    "inquirer": "^8.2.4",
+    "minimist": "^1.2.6",
     "nodejs-websocket": "^1.7.2",
     "uuid": "^8.3.2"
   }
