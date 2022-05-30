@@ -71,18 +71,22 @@ async function getTTSData(text,voice='CN-Yunxi',express='general',role='',rate=0
         </voice>
     </speak>
     `
-
+    console.log("获取Token...");
     const Authorization = await getAuthToken();
     const XConnectionId = uuidv4().toUpperCase();
 
+    console.log("创建webscoket连接...");
     const connect = await wssConnect(`wss://eastus.tts.speech.microsoft.com/cognitiveservices/websocket/v1?Authorization=${Authorization}&X-ConnectionId=${XConnectionId}`);
 
+    console.log("第1次上报...");
     const message_1 = `Path: speech.config\r\nX-RequestId: ${XConnectionId}\r\nX-Timestamp: ${getXTime()}\r\nContent-Type: application/json\r\n\r\n{"context":{"system":{"name":"SpeechSDK","version":"1.19.0","build":"JavaScript","lang":"JavaScript","os":{"platform":"Browser/Linux x86_64","name":"Mozilla/5.0 (X11; Linux x86_64; rv:78.0) Gecko/20100101 Firefox/78.0","version":"5.0 (X11)"}}}}`;
     await wssSend(connect,message_1);
 
-    const message_2 = `Path: synthesis.context\r\nX-RequestId: ${XConnectionId}\r\nX-Timestamp: ${getXTime()}\r\nContent-Type: application/json\r\n\r\n{"synthesis":{"audio":{"metadataOptions":{"sentenceBoundaryEnabled":false,"wordBoundaryEnabled":false},"outputFormat":"audio-16khz-32kbitrate-mono-mp3"}}}`;
+    console.log("第2次上报...");
+    const message_2 = `Path: synthesis.context\r\nX-RequestId: ${XConnectionId}\r\nX-Timestamp: ${getXTime()}\r\nContent-Type: application/json\r\n\r\n{"synthesis":{"audio":{"metadataOptions":{"sentenceBoundaryEnabled":false,"wordBoundaryEnabled":false},"outputFormat":"audio-24khz-160kbitrate-mono-mp3"}}}`;
     await wssSend(connect,message_2);
 
+    console.log("第3次上报...");
     const message_3 = `Path: ssml\r\nX-RequestId: ${XConnectionId}\r\nX-Timestamp: ${getXTime()}\r\nContent-Type: application/ssml+xml\r\n\r\n${SSML}`
     await wssSend(connect,message_3);
 
@@ -90,11 +94,13 @@ async function getTTSData(text,voice='CN-Yunxi',express='general',role='',rate=0
         let final_data=Buffer.alloc(0);
         connect.on("text", (data) => {
             if(data.indexOf("Path:turn.end")>=0){
+                console.log("已完成");
                 connect.close();
                 resolve(final_data);
             }
         })
         connect.on("binary", function (response) {
+            console.log("正在接收数据...");
             let data = Buffer.alloc(0);
             response.on("readable", function () {
                 const newData = response.read()
@@ -102,7 +108,8 @@ async function getTTSData(text,voice='CN-Yunxi',express='general',role='',rate=0
             })
             response.on("end", function () {
                 const index = data.toString().indexOf("Path:audio")+10;
-                final_data = Buffer.concat([final_data,data.slice(index)]);
+                const cmbData = data.slice(index+2);
+                final_data = Buffer.concat([final_data,cmbData]);
             })
         });
         connect.on("close", function (code, reason) {
@@ -157,9 +164,6 @@ const emotions=[
     "embarrassed"
 ]
 
-// getTTSData("我叫大帅，一个热爱编程的老程序猿","CN-"+voices["CN"][1],"cheerful");
-
-
 async function showMenu(){
     let text = argv.i||'请在微信里搜索大帅老猿';
 
@@ -192,6 +196,7 @@ async function showMenu(){
     const mp3buffer = await getTTSData(text,lang+"-"+voice);
 
     let output = argv.o||"./"+lang+"-"+voice+"-"+(new Date().getTime())+".mp3"
+
     fs.writeFileSync(output,mp3buffer);
 }
 
