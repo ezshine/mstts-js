@@ -19,13 +19,8 @@ const mp3buffer = await mstts.getTTSData(text,voice,express,role,rate,pitch);
 */
 
 const axios = require("axios");
-const cheerio = require("cheerio");
 const { v4: uuidv4 } = require('uuid');
 const ws = require("nodejs-websocket");
-const fs = require("fs");
-const inquirer = require('inquirer');
-
-const argv = require('minimist')(process.argv.slice(2));
 
 async function getAuthToken(){
     //https://azure.microsoft.com/en-gb/services/cognitive-services/text-to-speech/
@@ -60,10 +55,11 @@ function wssConnect(url){
 }
 
 async function getTTSData(text,voice='CN-Yunxi',express='general',role='',rate=0,pitch=0){
+    if(!express)express='general';
     const SSML = `
     <speak xmlns="http://www.w3.org/2001/10/synthesis" xmlns:mstts="http://www.w3.org/2001/mstts" xmlns:emo="http://www.w3.org/2009/10/emotionml" version="1.0" xml:lang="en-US">
         <voice name="zh-${voice}Neural">
-            <mstts:express-as style="${express}">
+            <mstts:express-as style="${express}" ${role!=''?('role=\"'+role+'\"'):''}>
                 <prosody rate="${rate}%" pitch="${pitch}%">
                 ${text}
                 </prosody>
@@ -71,6 +67,8 @@ async function getTTSData(text,voice='CN-Yunxi',express='general',role='',rate=0
         </voice>
     </speak>
     `
+    console.log(SSML);
+
     console.log("获取Token...");
     const Authorization = await getAuthToken();
     const XConnectionId = uuidv4().toUpperCase();
@@ -118,6 +116,11 @@ async function getTTSData(text,voice='CN-Yunxi',express='general',role='',rate=0
     })
 }
 
+async function getVoiceList(){
+    //https://eastus.tts.speech.microsoft.com/cognitiveservices/voices/list?Authorization=token
+    //todo
+}
+
 const voices = {
     "CN":{
         "晓晓":"Xiaoxiao",
@@ -150,21 +153,11 @@ const voices = {
     }
 }
 
-const emotions=[
-    "general",
-    "calm",
-    "fearful",
-    "cheerful",
-    "disgruntled",
-    "serious",
-    "angry",
-    "sad",
-    "gentle",
-    "affectinate",
-    "embarrassed"
-]
-
 async function showMenu(){
+    const fs = require("fs");
+    const inquirer = require('inquirer');
+    const argv = require('minimist')(process.argv.slice(2));
+
     let text = argv.i||'请在微信里搜索大帅老猿';
 
     let langChoices = {
