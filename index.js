@@ -56,17 +56,23 @@ function wssConnect(url){
 
 async function getTTSData(text,voice='CN-Yunxi',express='general',role='',rate=0,pitch=0){
     if(!express)express='general';
-    const SSML = `
-    <speak xmlns="http://www.w3.org/2001/10/synthesis" xmlns:mstts="http://www.w3.org/2001/mstts" xmlns:emo="http://www.w3.org/2009/10/emotionml" version="1.0" xml:lang="en-US">
-        <voice name="zh-${voice}Neural">
-            <mstts:express-as style="${express}" ${role!=''?('role=\"'+role+'\"'):''}>
-                <prosody rate="${rate}%" pitch="${pitch}%">
-                ${text}
-                </prosody>
-            </mstts:express-as>
-        </voice>
-    </speak>
-    `
+    let SSML;
+    if (/<.+>.*<\/.+>/s.test(text)) {
+        SSML = text;
+    } else {
+        SSML = `
+        <speak xmlns="http://www.w3.org/2001/10/synthesis" xmlns:mstts="http://www.w3.org/2001/mstts" xmlns:emo="http://www.w3.org/2009/10/emotionml" version="1.0" xml:lang="en-US">
+            <voice name="zh-${voice}Neural">
+                <mstts:express-as style="${express}" ${role!=''?('role=\"'+role+'\"'):''}>
+                    <prosody rate="${rate}%" pitch="${pitch}%">
+                    ${text}
+                    </prosody>
+                </mstts:express-as>
+            </voice>
+        </speak>
+        `
+    }
+    
     console.log(SSML);
 
     console.log("获取Token...");
