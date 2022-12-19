@@ -24,7 +24,7 @@ const ws = require("nodejs-websocket");
 
 async function getAuthToken(){
     //https://azure.microsoft.com/en-gb/services/cognitive-services/text-to-speech/
-
+    //https://azure.microsoft.com/zh-cn/products/cognitive-services/text-to-speech/
     const res = await axios.get("https://azure.microsoft.com/en-gb/services/cognitive-services/text-to-speech/");
 
     const reg = /token: \"(.*?)\"/;
@@ -48,7 +48,11 @@ function wssSend(connect,msg){
 
 function wssConnect(url){
     return new Promise((resolve,reject)=>{
-        const connect = ws.connect(url,function(){
+        const connect = ws.connect(url,{
+            'extraHeaders':{
+                'Origin':'https://azure.microsoft.com'
+            }
+        },function(){
             resolve(connect);
         });
     });
@@ -70,11 +74,13 @@ async function getTTSData(text,voice='CN-Yunxi',express='general',role='',rate=0
     console.log(SSML);
 
     console.log("获取Token...");
-    const Authorization = await getAuthToken();
+    const Authorization = 'bearer%20undefined';//await getAuthToken();
     const XConnectionId = uuidv4().toUpperCase();
 
+    console.log(`Authorization:${Authorization} XConnectionId:${XConnectionId}`);
+
     console.log("创建webscoket连接...");
-    const connect = await wssConnect(`wss://eastus.tts.speech.microsoft.com/cognitiveservices/websocket/v1?Authorization=${Authorization}&X-ConnectionId=${XConnectionId}`);
+    const connect = await wssConnect(`wss://eastus.api.speech.microsoft.com/cognitiveservices/websocket/v1?TrafficType=AzureDemo&Authorization=${Authorization}&X-ConnectionId=${XConnectionId}`);
 
     console.log("第1次上报...");
     const message_1 = `Path: speech.config\r\nX-RequestId: ${XConnectionId}\r\nX-Timestamp: ${getXTime()}\r\nContent-Type: application/json\r\n\r\n{"context":{"system":{"name":"SpeechSDK","version":"1.19.0","build":"JavaScript","lang":"JavaScript","os":{"platform":"Browser/Linux x86_64","name":"Mozilla/5.0 (X11; Linux x86_64; rv:78.0) Gecko/20100101 Firefox/78.0","version":"5.0 (X11)"}}}}`;
